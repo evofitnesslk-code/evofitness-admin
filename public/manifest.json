@@ -1,0 +1,24 @@
+{
+  "name": "EVO Fitness Membership Management",
+  "short_name": "EVO Fitness",
+  "description": "Internal Gym Membership Management Platform for EVO Fitness, Colombo 5",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#09090B",
+  "theme_color": "#09090B",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/evofitness-logo.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/evofitness-logo.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}

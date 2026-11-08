@@ -1,0 +1,246 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #09090b;
+    --foreground: #f4f4f5;
+
+    --card: #121214;
+    --card-foreground: #f4f4f5;
+
+    --popover: #18181b;
+    --popover-foreground: #f4f4f5;
+
+    --primary: #e5b842;
+    --primary-foreground: #09090b;
+
+    --secondary: #27272a;
+    --secondary-foreground: #f4f4f5;
+
+    --muted: #18181b;
+    --muted-foreground: #a1a1aa;
+
+    --accent: #27272a;
+    --accent-foreground: #f4f4f5;
+
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+
+    --border: #27272a;
+    --input: #27272a;
+    --ring: #e5b842;
+
+    --radius: 0.75rem;
+
+    /* Custom EVO Brand Tokens */
+    --gold-300: #fde047;
+    --gold-400: #f5d061;
+    --gold-500: #e5b842;
+    --gold-600: #c69214;
+    --gold-900: #362402;
+    --gold-border: rgba(229, 184, 66, 0.35);
+
+    --silver-100: #f4f4f5;
+    --silver-300: #d4d4d8;
+    --silver-500: #a1a1aa;
+    --silver-700: #3f3f46;
+
+    --surface-card: #121214;
+    --surface-elevated: #18181b;
+    --surface-hover: #27272a;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+}
+
+/* Luxury metallic gold gradient */
+.bg-gold-gradient {
+  background: linear-gradient(135deg, #f5d061 0%, #e5b842 50%, #c69214 100%);
+}
+
+.text-gold-gradient {
+  background: linear-gradient(135deg, #fde047 0%, #e5b842 60%, #c69214 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.border-gold-accent {
+  border-color: rgba(229, 184, 66, 0.35);
+}
+
+.card-luxury {
+  background-color: #121214;
+  border: 1px solid rgba(229, 184, 66, 0.25);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.7);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-luxury:hover {
+  border-color: rgba(229, 184, 66, 0.5);
+  box-shadow: 0 6px 24px -2px rgba(229, 184, 66, 0.12);
+}
+
+/* Custom scrollbars for dark mode */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Strict Clean Print Styles for Formal Invoices / Receipts */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0 !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-height: 100% !important;
+    height: 100% !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Suppress everything outside #printable-invoice */
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-invoice,
+  #printable-invoice * {
+    visibility: visible;
+  }
+
+  #printable-invoice {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    min-height: 100vh !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 10mm 12mm !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #09090b !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    z-index: 999999 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  aside,
+  header,
+  nav,
+  footer,
+  .print-hidden,
+  [data-print-hidden="true"],
+  [role="navigation"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+
+
+/* ---------------------------------------------------------------------------
+   Motion: spring-ish transitions for the public application flow.
+   Transform/opacity only; everything collapses under reduced motion.
+   --------------------------------------------------------------------------- */
+@keyframes evo-step-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes evo-rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes evo-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-step-in {
+  animation: evo-step-in 320ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.animate-rise-in {
+  animation: evo-rise-in 360ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.animate-fade-in {
+  animation: evo-fade-in 200ms ease-out both;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-step-in,
+  .animate-rise-in,
+  .animate-fade-in {
+    animation: none !important;
+  }
+}
