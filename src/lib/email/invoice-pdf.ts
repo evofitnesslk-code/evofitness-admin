@@ -14,6 +14,10 @@ export interface InvoicePdfData {
   discountAmount?: number;
   trainerFee?: number;
   trainerName?: string | null;
+  /** Amount of the installment this email is for (omit for a full invoice). */
+  thisPayment?: number;
+  paymentMethod?: string;
+  balanceDueDate?: string | null;
 }
 
 export function generateInvoicePdfBuffer(data: InvoicePdfData): Buffer {

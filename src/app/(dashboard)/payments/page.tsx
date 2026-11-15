@@ -1,4 +1,5 @@
 import { getPayments } from '@/app/actions/payments';
+import { PaymentsTabs } from '@/components/payments/payments-tabs';
 import { PaymentsListClient } from '@/components/payments/payments-list-client';
 
 export default async function PaymentsPage() {
@@ -14,6 +15,8 @@ export default async function PaymentsPage() {
           Audit trail of all recorded membership installments, down payments, and receipts
         </p>
       </div>
+
+      <PaymentsTabs active="log" />
 
       <PaymentsListClient initialPayments={payments} />
     </div>

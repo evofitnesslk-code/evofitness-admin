@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { recordPayment } from '@/app/actions/payments';
 import type { PaymentMethod } from '@/types/database';
 import { formatLKR } from '@/lib/utils';
@@ -24,6 +24,10 @@ export function RecordPaymentModal({
   const [amount, setAmount] = useState<number>(outstandingBalance);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [notes, setNotes] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  // One key per modal session: double-click / retry replays instead of double-charging.
+  const requestKey = useRef<string>(crypto.randomUUID());
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Colombo' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +37,8 @@ export function RecordPaymentModal({
     e.preventDefault();
     setError(null);
 
-    if (amount <= 0) {
+    if (loading) return;
+    if (!Number.isFinite(amount) || amount <= 0) {
       setError('Payment amount must be greater than zero.');
       return;
     }
@@ -53,6 +58,9 @@ export function RecordPaymentModal({
         amount,
         payment_method: paymentMethod,
         notes: notes || undefined,
+        request_key: requestKey.current,
+        balance_due_date:
+          dueDate && amount < outstandingBalance ? dueDate : undefined,
       });
 
       if (res.error) {
@@ -61,6 +69,9 @@ export function RecordPaymentModal({
         return;
       }
 
+      requestKey.current = crypto.randomUUID();
+      setNotes('');
+      setDueDate('');
       setLoading(false);
       onClose();
     } catch (err) {
@@ -124,13 +135,29 @@ export function RecordPaymentModal({
             </div>
             <input
               type="number"
-              min="1"
+              min="0.01"
+              step="0.01"
               max={outstandingBalance}
               required
               value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
+              onChange={(e) => setAmount(Math.round(Number(e.target.value) * 100) / 100)}
               className="w-full h-10 px-3 bg-[#18181B] border border-[#27272A] rounded-xl text-xs text-[#F4F4F5] focus:outline-none focus:border-[#E5B842]"
             />
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#18181B] border border-[#27272A] flex justify-between items-center">
+            <span className="text-[#A1A1AA]">Balance after this payment:</span>
+            <span
+              className={`font-bold text-sm ${
+                amount >= outstandingBalance ? 'text-[#10B981]' : 'text-[#F59E0B]'
+              }`}
+            >
+              {amount > 0 && amount <= outstandingBalance
+                ? amount === outstandingBalance
+                  ? 'Paid in full'
+                  : formatLKR(outstandingBalance - amount)
+                : '-'}
+            </span>
           </div>
 
           <div>
@@ -167,6 +194,21 @@ export function RecordPaymentModal({
               className="w-full h-10 px-3 bg-[#18181B] border border-[#27272A] rounded-xl text-xs text-[#F4F4F5] focus:outline-none focus:border-[#E5B842]"
             />
           </div>
+
+          {amount > 0 && amount < outstandingBalance && (
+            <div>
+              <label className="block text-xs font-medium text-[#D4D4D8] mb-1">
+                Balance promised by (Optional)
+              </label>
+              <input
+                type="date"
+                min={todayStr}
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full h-10 px-3 bg-[#18181B] border border-[#27272A] rounded-xl text-xs text-[#F4F4F5] focus:outline-none focus:border-[#E5B842] [color-scheme:dark]"
+              />
+            </div>
+          )}
 
           <div className="pt-3 border-t border-[#27272A] flex justify-end gap-2">
             <button

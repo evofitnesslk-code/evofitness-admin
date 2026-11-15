@@ -506,7 +506,10 @@ export async function cancelMembership(
   return { success: true };
 }
 
-export async function sendMembershipInvoiceEmail(membershipId: string) {
+export async function sendMembershipInvoiceEmail(
+  membershipId: string,
+  opts?: { thisPayment?: number; paymentMethod?: string }
+) {
   const membership = await getMembershipById(membershipId);
   if (!membership) {
     return { error: 'Membership record not found.' };
@@ -531,6 +534,9 @@ export async function sendMembershipInvoiceEmail(membershipId: string) {
     trainerName: membership.trainer?.name,
     startDate: membership.start_date,
     endDate: membership.end_date,
+    thisPayment: opts?.thisPayment,
+    paymentMethod: opts?.paymentMethod,
+    balanceDueDate: membership.balance_due_date,
   });
 
   if (!result.success) {
