@@ -2,13 +2,25 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import type { Payment, PaymentMethod, Member, Membership, MembershipPlan } from '@/types/database';
+import { sendMembershipInvoiceEmail } from '@/app/actions/memberships';
+import type {
+  Payment,
+  PaymentMethod,
+  Member,
+  Membership,
+  MembershipPlan,
+  PendingPayment,
+} from '@/types/database';
 
 export async function recordPayment(formData: {
   membership_id: string;
   amount: number;
   payment_method: PaymentMethod;
   notes?: string;
+  /** Client-generated key so a double-click / retry cannot record twice. */
+  request_key?: string;
+  /** Optional promised-by date (YYYY-MM-DD) for the remaining balance. */
+  balance_due_date?: string | null;
 }) {
   const supabase = await createClient();
 
@@ -21,99 +33,98 @@ export async function recordPayment(formData: {
   }
 
   const amount = Number(formData.amount);
-  if (isNaN(amount) || amount <= 0) {
+  if (!Number.isFinite(amount) || amount <= 0) {
     return { error: 'Payment amount must be greater than zero.' };
   }
 
-  // Fetch the membership and existing payments
-  const { data: membership, error: memErr } = await supabase
-    .from('memberships')
-    .select('*, member:members(id, full_name, email), payments(*)')
-    .eq('id', formData.membership_id)
-    .single();
+  // Validation, locking, overpayment/cancelled checks, idempotency and the audit
+  // entry all happen atomically inside the database function.
+  const { data, error } = await supabase.rpc('record_membership_payment', {
+    p_membership_id: formData.membership_id,
+    p_amount: amount,
+    p_method: formData.payment_method,
+    p_notes: formData.notes?.trim() || null,
+    p_request_key: formData.request_key || null,
+    p_balance_due_date: formData.balance_due_date || null,
+  });
 
-  if (memErr || !membership) {
-    return { error: 'Membership not found.' };
+  if (error) {
+    return { error: error.message };
   }
 
-  if (membership.status === 'cancelled') {
-    return { error: 'Cannot record payments against a cancelled membership.' };
-  }
+  const result = data as {
+    payment_id: string;
+    duplicate: boolean;
+    paid: number;
+    balance: number;
+  };
 
-  const recordedPayments = (membership.payments ?? []) as Array<Pick<Payment, 'amount'>>;
-  const totalPaid = recordedPayments.reduce(
-    (sum: number, p: Pick<Payment, 'amount'>) => sum + Number(p.amount),
-    0
-  );
-  const remaining = Number(membership.total_due) - totalPaid;
-
-  if (amount > remaining) {
-    return {
-      error: `Payment amount (LKR ${amount.toLocaleString()}) exceeds the outstanding balance (LKR ${remaining.toLocaleString()}).`,
-    };
-  }
-
-  // Insert payment
-  const { data: newPayment, error: payErr } = await supabase
-    .from('payments')
-    .insert([
-      {
-        membership_id: formData.membership_id,
-        amount: amount,
-        payment_method: formData.payment_method,
-        notes: formData.notes?.trim() || null,
-        recorded_by: user.id,
-      },
-    ])
-    .select()
-    .single();
-
-  if (payErr) {
-    return { error: payErr.message };
-  }
-
-  // Audit log
-  await supabase.from('audit_log').insert([
-    {
-      action: 'record_payment',
-      entity_type: 'payments',
-      entity_id: newPayment.id,
-      user_id: user.id,
-      details: {
-        membership_id: formData.membership_id,
-        amount,
-        payment_method: formData.payment_method,
-      },
-    },
-  ]);
-
-  // Queue notification if member email exists
-  if (membership.member?.email) {
-    await supabase.from('notifications').insert([
-      {
-        member_id: membership.member.id,
-        channel: 'email',
-        type: 'invoice_receipt',
-        status: 'queued',
-        recipient_email: membership.member.email,
-        subject: `Payment Receipt: ${membership.invoice_number} - EVO Fitness`,
-        payload: {
-          invoice_number: membership.invoice_number,
-          amount_paid: amount,
-          payment_method: formData.payment_method,
-          outstanding_balance: remaining - amount,
-          member_name: membership.member.full_name,
-        },
-      },
-    ]);
+  // Email the per-installment receipt (paid to date + remaining balance). Skipped
+  // for a replayed request so a retry never sends a second email.
+  if (!result.duplicate) {
+    sendMembershipInvoiceEmail(formData.membership_id, {
+      thisPayment: amount,
+      paymentMethod: formData.payment_method,
+    }).catch((emailErr) => {
+      console.error('Payment receipt email failed to send:', emailErr);
+    });
   }
 
   revalidatePath('/payments');
+  revalidatePath('/payments/pending');
   revalidatePath('/memberships');
   revalidatePath(`/memberships/${formData.membership_id}`);
   revalidatePath('/dashboard');
   revalidatePath('/reports');
-  return { success: true, payment: newPayment };
+  return {
+    success: true,
+    duplicate: result.duplicate,
+    paymentId: result.payment_id,
+    paid: Number(result.paid),
+    balance: Number(result.balance),
+  };
+}
+
+export async function setBalanceDueDate(
+  membershipId: string,
+  dueDate: string | null
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: 'You must be authenticated.' };
+
+  const { error } = await supabase.rpc('set_balance_due_date', {
+    p_membership_id: membershipId,
+    p_due_date: dueDate || null,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath('/payments/pending');
+  revalidatePath(`/memberships/${membershipId}`);
+  return { success: true };
+}
+
+export async function getPendingPayments(): Promise<PendingPayment[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('v_pending_payments')
+    .select('*')
+    .neq('payment_status', 'cancelled')
+    .order('balance_due_date', { ascending: true, nullsFirst: false })
+    .order('start_date', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching pending payments:', error);
+    return [];
+  }
+  return (data ?? []).map((r) => ({
+    ...r,
+    total_due: Number(r.total_due),
+    paid: Number(r.paid),
+    balance: Number(r.balance),
+  })) as PendingPayment[];
 }
 
 export async function getPayments(params?: {

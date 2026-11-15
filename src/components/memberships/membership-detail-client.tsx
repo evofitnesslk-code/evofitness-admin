@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import type { Membership } from '@/types/database';
 import { formatLKR, formatDate } from '@/lib/utils';
+import { setBalanceDueDate } from '@/app/actions/payments';
 import { RecordPaymentModal } from './record-payment-modal';
 import { CancelMembershipModal } from './cancel-membership-modal';
 import { EmailButton } from '@/components/invoice/email-button';
@@ -24,15 +25,47 @@ interface MembershipDetailClientProps {
 }
 
 export function MembershipDetailClient({
-  membership: initialMembership,
+  membership,
 }: MembershipDetailClientProps) {
-  const [membership] = useState<Membership>(initialMembership);
+  const [dueDateDraft, setDueDateDraft] = useState(membership.balance_due_date ?? '');
+  const [dueDateError, setDueDateError] = useState<string | null>(null);
+  const [savingDue, startSavingDue] = useTransition();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   const balance = membership.outstanding_balance ?? 0;
   const isPaidInFull = balance <= 0;
   const isCancelled = membership.status === 'cancelled';
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Colombo' });
+  const isOverdue =
+    !isCancelled && balance > 0 && !!membership.balance_due_date && membership.balance_due_date < todayStr;
+  const paidAmount = membership.paid_amount ?? 0;
+  const payStatus = isCancelled
+    ? 'Cancelled'
+    : balance <= 0
+    ? 'Paid'
+    : paidAmount > 0
+    ? 'Partially paid'
+    : 'Unpaid';
+
+  // Running balance after each installment (oldest first).
+  const chronological = [...(membership.payments ?? [])].sort(
+    (a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime()
+  );
+  let running = Number(membership.total_due);
+  const balanceAfter = new Map<string, number>();
+  for (const p of chronological) {
+    running -= Number(p.amount);
+    balanceAfter.set(p.id, Math.max(0, running));
+  }
+
+  function saveDueDate(value: string) {
+    setDueDateError(null);
+    startSavingDue(async () => {
+      const res = await setBalanceDueDate(membership.id, value || null);
+      if (res.error) setDueDateError(res.error);
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -252,6 +285,52 @@ export function MembershipDetailClient({
                 {balance > 0 ? formatLKR(balance) : 'Paid in Full'}
               </span>
             </div>
+
+            <div className="flex justify-between text-xs">
+              <span className="text-[#A1A1AA]">Payment status:</span>
+              <span
+                className={`font-semibold ${
+                  payStatus === 'Paid'
+                    ? 'text-[#10B981]'
+                    : payStatus === 'Cancelled'
+                    ? 'text-[#EF4444]'
+                    : 'text-[#F59E0B]'
+                }`}
+              >
+                {payStatus}
+              </span>
+            </div>
+
+            {balance > 0 && !isCancelled && (
+              <div className="pt-2 border-t border-[#27272A] space-y-1.5">
+                <label className="flex justify-between items-center text-xs text-[#A1A1AA]">
+                  <span>Balance promised by:</span>
+                  {isOverdue && (
+                    <span className="px-2 py-0.5 rounded-full bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/30 text-[10px] font-bold uppercase">
+                      Overdue
+                    </span>
+                  )}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    min={todayStr}
+                    value={dueDateDraft}
+                    onChange={(e) => setDueDateDraft(e.target.value)}
+                    className="flex-1 h-9 px-3 bg-[#18181B] border border-[#27272A] rounded-xl text-xs text-[#F4F4F5] focus:outline-none focus:border-[#E5B842] [color-scheme:dark]"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingDue || dueDateDraft === (membership.balance_due_date ?? '')}
+                    onClick={() => saveDueDate(dueDateDraft)}
+                    className="px-3 rounded-xl bg-[#18181B] border border-[#27272A] text-xs font-semibold text-[#E5B842] disabled:opacity-40 cursor-pointer"
+                  >
+                    {savingDue ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+                {dueDateError && <p className="text-[11px] text-[#EF4444]">{dueDateError}</p>}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -289,6 +368,7 @@ export function MembershipDetailClient({
                   <th className="py-2.5 px-4">Payment Method</th>
                   <th className="py-2.5 px-4">Notes / Ref</th>
                   <th className="py-2.5 px-4 text-right">Amount (LKR)</th>
+                  <th className="py-2.5 px-4 text-right">Balance After</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#27272A]/50">
@@ -308,6 +388,9 @@ export function MembershipDetailClient({
                     <td className="py-3 px-4 text-right font-bold text-[#10B981]">
                       {formatLKR(Number(p.amount))}
                     </td>
+                    <td className="py-3 px-4 text-right text-[#A1A1AA]">
+                      {formatLKR(balanceAfter.get(p.id) ?? 0)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -318,6 +401,7 @@ export function MembershipDetailClient({
 
       {/* Modals */}
       <RecordPaymentModal
+        key={balance}
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         membershipId={membership.id}

@@ -223,6 +223,7 @@ export interface Membership {
   cancelled_at: string | null;
   cancellation_reason: string | null;
   refund_amount: number;
+  balance_due_date: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -245,7 +246,32 @@ export interface Payment {
   payment_date: string;
   notes: string | null;
   recorded_by: string | null;
+  request_key?: string | null;
   created_at: string;
+}
+
+export type PendingPaymentStatus = 'unpaid' | 'partial' | 'paid' | 'cancelled';
+
+/** Row of the `v_pending_payments` view. */
+export interface PendingPayment {
+  membership_id: string;
+  invoice_number: string;
+  member_id: string;
+  member_name: string;
+  member_phone: string | null;
+  member_email: string | null;
+  plan_name: string;
+  start_date: string;
+  membership_status: MembershipStatus;
+  total_due: number;
+  paid: number;
+  balance: number;
+  last_payment_at: string | null;
+  balance_due_date: string | null;
+  payment_status: PendingPaymentStatus;
+  is_overdue: boolean;
+  days_since_activity: number;
+  days_since_start: number;
 }
 
 export interface Notification {

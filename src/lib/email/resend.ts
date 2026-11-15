@@ -166,8 +166,16 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
               <td><strong>Total Membership Due</strong></td>
               <td style="text-align: right;">LKR ${params.totalDue.toLocaleString()}</td>
             </tr>
+            ${
+              params.thisPayment
+                ? `<tr>
+                    <td><strong>This Payment${params.paymentMethod ? ` (${params.paymentMethod})` : ''}</strong></td>
+                    <td style="text-align: right; font-weight: bold;">LKR ${params.thisPayment.toLocaleString()}</td>
+                   </tr>`
+                : ''
+            }
             <tr>
-              <td><strong>Amount Paid</strong></td>
+              <td><strong>Total Paid To Date</strong></td>
               <td style="text-align: right; color: #059669; font-weight: bold;">LKR ${params.amountPaid.toLocaleString()}</td>
             </tr>
             <tr class="total-row">
@@ -175,6 +183,11 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
               <td style="text-align: right;" class="total-val">LKR ${params.outstandingBalance.toLocaleString()}</td>
             </tr>
           </table>
+          ${
+            params.outstandingBalance > 0 && params.balanceDueDate
+              ? `<p style="font-size: 13px; color: #92400e;">The remaining balance is due by <strong>${params.balanceDueDate}</strong>.</p>`
+              : ''
+          }
 
           <div class="attachment-note">
             &#128206; <strong>Official Invoice / Receipt Attached:</strong> A formal PDF copy of your invoice (<code>${params.invoiceNumber}.pdf</code>) is attached to this email for your records.
@@ -205,7 +218,9 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
     } = {
       from: fromAddress,
       to: [params.to],
-      subject: `Official Receipt: Invoice ${params.invoiceNumber} - EVO Fitness`,
+      subject: params.thisPayment
+        ? `Payment Receipt: Invoice ${params.invoiceNumber} - EVO Fitness`
+        : `Official Receipt: Invoice ${params.invoiceNumber} - EVO Fitness`,
       html: html,
     };
 
