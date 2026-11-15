@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import Link from 'next/link';
-import { ArrowUpRight } from 'lucide-react';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { MembershipPlan } from '@/types/database';
 import { JoinForm } from './join-form';
+import { PricingButton } from './pricing-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,13 +58,7 @@ export default async function JoinPage() {
               </span>
             ))}
           </div>
-          <Link
-            href="/join/pricing"
-            className="mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#E5B842]/35 px-4 text-[13px] font-medium text-[#F5D061] transition-colors hover:border-[#E5B842]/60"
-          >
-            View membership rates
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-          </Link>
+          <PricingButton plans={plans} />
         </header>
 
         <JoinForm plans={plans} />
