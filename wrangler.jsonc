@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "evofitness-admin",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-13",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "build": {
+    "command": "npx opennextjs-cloudflare build"
+  },
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "evofitness-admin"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

@@ -54,3 +54,8 @@ next-env.d.ts
 # supabase advisor scratch dumps + smoke-test temp files
 advisors-*.json
 shop-smoke-tmp.json
+
+# cloudflare / opennext
+.open-next
+.wrangler
+.dev.vars*
