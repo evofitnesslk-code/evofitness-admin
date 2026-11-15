@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import type { Trainer, Profile } from '@/types/database';
 import { createTrainer, updateTrainer, toggleTrainerStatus } from '@/app/actions/trainers';
 import { formatLKR } from '@/lib/utils';
@@ -29,6 +30,7 @@ export function TrainersListClient({
   const [contact, setContact] = useState('');
   const [remarks, setRemarks] = useState('');
   const [defaultCharge, setDefaultCharge] = useState<number>(15000);
+  const [commissionRate, setCommissionRate] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +42,7 @@ export function TrainersListClient({
     setContact('');
     setRemarks('');
     setDefaultCharge(15000);
+    setCommissionRate(0);
     setError(null);
     setIsModalOpen(true);
   }
@@ -50,6 +53,7 @@ export function TrainersListClient({
     setContact(t.contact);
     setRemarks(t.remarks || '');
     setDefaultCharge(Number(t.default_charge));
+    setCommissionRate(Number(t.commission_rate ?? 0));
     setError(null);
     setIsModalOpen(true);
   }
@@ -66,6 +70,7 @@ export function TrainersListClient({
           contact,
           remarks: remarks || undefined,
           default_charge: defaultCharge,
+          commission_rate: commissionRate,
         });
         if (res.error) {
           setError(res.error);
@@ -81,6 +86,7 @@ export function TrainersListClient({
           contact,
           remarks: remarks || undefined,
           default_charge: defaultCharge,
+          commission_rate: commissionRate,
         });
         if (res.error) {
           setError(res.error);
@@ -152,9 +158,16 @@ export function TrainersListClient({
                       {t.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="text-xs font-bold text-[#F4F4F5]">
-                        {t.name}
-                      </h3>
+                      {isAdmin ? (
+                        <Link
+                          href={`/trainers/${t.id}`}
+                          className="text-xs font-bold text-[#F4F4F5] hover:text-[#F5D061]"
+                        >
+                          {t.name}
+                        </Link>
+                      ) : (
+                        <h3 className="text-xs font-bold text-[#F4F4F5]">{t.name}</h3>
+                      )}
                       <span className="text-[10px] text-[#A1A1AA] flex items-center gap-1">
                         <Phone className="w-3 h-3" />
                         {t.contact}
@@ -188,6 +201,20 @@ export function TrainersListClient({
                   <span className="text-xs font-bold text-[#E5B842]">
                     {formatLKR(Number(t.default_charge))}
                   </span>
+                  {isAdmin && (
+                    <span className="mt-1 block text-[10px] text-[#A1A1AA]">
+                      Commission{' '}
+                      <span
+                        className={
+                          Number(t.commission_rate) > 0
+                            ? 'font-bold text-[#F5D061]'
+                            : 'font-bold text-[#F59E0B]'
+                        }
+                      >
+                        {Number(t.commission_rate ?? 0)}%
+                      </span>
+                    </span>
+                  )}
                 </div>
 
                 {isAdmin && (
@@ -278,6 +305,26 @@ export function TrainersListClient({
                   onChange={(e) => setDefaultCharge(Number(e.target.value))}
                   className="w-full h-10 px-3 bg-[#18181B] border border-[#27272A] rounded-xl text-xs text-[#F4F4F5] focus:outline-none focus:border-[#E5B842]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#D4D4D8] mb-1">
+                  Commission Rate (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  required
+                  value={commissionRate}
+                  onChange={(e) => setCommissionRate(Number(e.target.value))}
+                  className="w-full h-10 px-3 bg-[#18181B] border border-[#27272A] rounded-xl text-xs text-[#F4F4F5] focus:outline-none focus:border-[#E5B842]"
+                />
+                <p className="mt-1 text-[10px] text-[#71717A]">
+                  Share of the net personal-training fee collected. Changes apply to memberships
+                  created from now on; existing memberships keep their original rate.
+                </p>
               </div>
 
               <div>

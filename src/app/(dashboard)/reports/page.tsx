@@ -38,6 +38,11 @@ export default async function ReportsPage() {
         <Link href="/reports/expiries" className="inline-flex min-h-11 items-center rounded-xl border border-[#E5B842]/35 px-4 text-sm font-medium text-[#F5D061] hover:border-[#E5B842]/60">
           Monthly expirations
         </Link>
+        {profile?.role === 'admin' && (
+          <Link href="/reports/trainers" className="inline-flex min-h-11 items-center rounded-xl border border-[#E5B842]/35 px-4 text-sm font-medium text-[#F5D061] hover:border-[#E5B842]/60">
+            Trainer commissions
+          </Link>
+        )}
       </div>
 
       <ReportsViewClient

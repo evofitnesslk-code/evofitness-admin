@@ -193,6 +193,8 @@ export interface Trainer {
   contact: string;
   remarks: string | null;
   default_charge: number;
+  /** Commission percentage (0-100) paid to the trainer on net PT fees collected. */
+  commission_rate: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
